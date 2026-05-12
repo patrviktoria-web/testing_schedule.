@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Система тестування</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f4f7f6; }
+        .card { background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; max-width: 400px; width: 90%; }
+        h1 { color: #2c3e50; font-size: 1.5rem; }
+        .date { color: #7f8c8d; margin-bottom: 1.5rem; }
+        .btn { display: inline-block; background: #27ae60; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; transition: background 0.3s; }
+        .btn:hover { background: #219150; }
+        .error { color: #e74c3c; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="card" id="app">
+    <h1 id="test-name">Завантаження...</h1>
+    <p class="date" id="current-date"></p>
+    <div id="action-area"></div>
+</div>
+
+<script>
+    // ЗАМІНІТЬ ЦЕ ПОСИЛАННЯ на те, яке ви отримали в Кроці 1 (CSV)
+    const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR8iK5FkrenX4xD6Tjqee6_3so8v-JgoBTFbMGK-yiY9Xcskh7wbokA1cAN6TRe3cU_ZT2pfqMwthv7/pub?gid=0&single=true&output=csv';
+
+    async function loadTestData() {
+        try {
+            const response = await fetch(CSV_URL);
+            const data = await response.text();
+            const rows = data.split('\n').map(row => row.split(','));
+
+            const today = new Date();
+            // Форматуємо дату як "12.05" (день.місяць)
+            const day = String(today.getDate()).padStart(2, '0');
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const todayStr = `${day}.${month}`;
+
+            document.getElementById('current-date').innerText = `Сьогодні: ${todayStr}`;
+
+            // Шукаємо рядок з сьогоднішньою датою (колонки A, B, C -> 0, 1, 2)
+            const todayRow = rows.find(row => row[0].trim() === todayStr);
+
+            const titleEl = document.getElementById('test-name');
+            const areaEl = document.getElementById('action-area');
+
+            if (todayRow) {
+                titleEl.innerText = todayRow[1]; // Назва тесту (Кокуна, САН тощо)
+                const url = todayRow[2].trim();  // Посилання
+                areaEl.innerHTML = `<a href="${url}" class="btn" target="_blank">Відкрити тест</a>`;
+            } else {
+                titleEl.innerText = "Тестів не знайдено";
+                areaEl.innerHTML = `<p class="error">На сьогодні графіком тестування не передбачено.</p>`;
+            }
+        } catch (error) {
+            console.error(error);
+            document.getElementById('test-name').innerText = "Помилка зв'язку";
+        }
+    }
+
+    loadTestData();
+</script>
+
+</body>
+</html>
