@@ -3,22 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Система тестування та сповіщень</title>
+    <title>Система сповіщень, тестування та оголошень</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background-color: #f4f7f6; padding: 20px; box-sizing: border-box; }
-        .card { background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; max-width: 400px; width: 100%; margin-bottom: 20px; }
+        .card { background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; max-width: 500px; width: 100%; margin-bottom: 20px; box-sizing: border-box; }
         
-        /* Стилі для блоку дня народження */
-        .bday-card { background: linear-gradient(135deg, #ffeaa7 0%, #ffb8b8 100%); border: none; display: none; /* ховаємо за замовчуванням, якщо іменинників немає */ }
+        /* 1. Блок Дня народження */
+        .bday-card { background: linear-gradient(135deg, #ffeaa7 0%, #ffb8b8 100%); border: none; display: none; }
         .bday-title { color: #d35400; font-size: 1.4rem; margin-top: 0; }
         .bday-names { font-size: 1.2rem; font-weight: bold; color: #2c3e50; margin: 10px 0; line-height: 1.4; }
         .bday-wishes { font-style: italic; color: #4b6584; font-size: 0.95rem; }
 
-        h1 { color: #2c3e50; font-size: 1.5rem; }
-        .date { color: #7f8c8d; margin-bottom: 1.5rem; font-weight: 500; }
-        .btn { display: inline-block; background: #27ae60; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; transition: background 0.3s; }
+        /* 2. Блок календарних тестів за датами */
+        .test-card { border-top: 5px solid #27ae60; }
+        .test-title { color: #2c3e50; font-size: 1.4rem; margin-top: 0; }
+        .date { color: #7f8c8d; margin-bottom: 1.2rem; font-weight: 500; font-size: 0.95rem; }
+
+        /* 3. Блок постійних оголошень (БЕЗ ДАТ) */
+        .announce-card { border-top: 5px solid #2980b9; }
+        .announce-card h2 { color: #2c3e50; font-size: 1.4rem; margin-top: 0; margin-bottom: 15px; }
+        .announce-item { background-color: #fafbfc; border-left: 4px solid #2980b9; padding: 12px 15px; margin-bottom: 15px; border-radius: 4px; text-align: left; }
+        .announce-text { color: #34495e; font-size: 1.05rem; font-weight: 500; margin: 0 0 10px 0; line-height: 1.4; }
+        
+        /* Загальні стилі кнопок */
+        .btn { display: inline-block; background: #27ae60; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; transition: background 0.3s; font-size: 0.9rem; margin-top: 5px; }
         .btn:hover { background: #219150; }
         .error { color: #e74c3c; font-weight: bold; }
+        .no-data { color: #7f8c8d; font-style: italic; font-size: 0.95rem; }
     </style>
 </head>
 <body>
@@ -29,99 +40,141 @@
     <p class="bday-wishes">Бажаємо міцного здоров'я, мирного неба та перемоги!🫡🇺🇦</p>
 </div>
 
-<div class="card" id="app">
-    <h1 id="test-name">Завантаження...</h1>
+<div class="card test-card">
+    <h2 class="test-title">📅 Планове тестування за графіком</h2>
     <p class="date" id="current-date"></p>
-    <div id="action-area"></div>
+    <div id="schedule-test-area">Завантаження...</div>
+</div>
+
+<div class="card announce-card">
+    <h2>📢 Додаткові оголошення та завдання</h2>
+    <div id="custom-announcements-area">Завантаження...</div>
 </div>
 
 <script>
-    // 1. Посилання на ТЕСТИ (твоє поточне)
+    // 1. Посилання на ПЛАНОВІ ТЕСТИ (за датами)
     const CSV_TESTS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR8iK5FkrenX4xD6Tjqee6_3so8v-JgoBTFbMGK-yiY9Xcskh7wbokA1cAN6TRe3cU_ZT2pfqMwthv7/pub?gid=0&single=true&output=csv';
 
-    // 2. ЗАМІНИ ЦЕ ПОСИЛАННЯ на посилання з другого аркуша (Дні Народження)
-    // Тобто треба опублікувати другий аркуш як CSV і вставити його сюди (зміниться gid=XXXXX)
+    // 2. Посилання на ДНІ НАРОДЖЕННЯ (за датами)
     const CSV_BDAYS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR8iK5FkrenX4xD6Tjqee6_3so8v-JgoBTFbMGK-yiY9Xcskh7wbokA1cAN6TRe3cU_ZT2pfqMwthv7/pub?gid=873818035&single=true&output=csv';
 
-    // Отримуємо поточну дату один раз для обох функцій
+    // 3. ЗАМІНИ ЦЕ ПОСИЛАННЯ на ваш 3-й аркуш "Оголошення" (Кол. А - текст, Кол. B - посилання, БЕЗ дат)
+    const CSV_ANNOUNCEMENTS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR8iK5FkrenX4xD6Tjqee6_3so8v-JgoBTFbMGK-yiY9Xcskh7wbokA1cAN6TRe3cU_ZT2pfqMwthv7/pub?gid=1272260367&single=true&output=csv';
+
+    // Розрахунок поточної дати для календарних блоків
     const today = new Date();
     const day = String(today.getDate()).padStart(2, '0');
     const month = String(today.getMonth() + 1).padStart(2, '0');
-    const todayStr = `${day}.${month}`; // Формат "31.05"
+    const todayStr = `${day}.${month}`; 
 
     document.getElementById('current-date').innerText = `Сьогодні: ${todayStr}`;
 
-    // ФУНКЦІЯ 1: ЗАВАНАТАЖЕННЯ ТЕСТІВ
-    async function loadTestData() {
+    // ФУНКЦІЯ 1: ЗАВАНАТАЖЕННЯ ПЛАНОВИХ ТЕСТІВ (ЗА ДАТАМИ)
+    async function loadScheduleTests() {
         try {
             const response = await fetch(CSV_TESTS_URL);
             const data = await response.text();
             const rows = data.split('\n').map(row => row.split(','));
 
             const todayRow = rows.find(row => row[0] && row[0].trim() === todayStr);
-
-            const titleEl = document.getElementById('test-name');
-            const areaEl = document.getElementById('action-area');
+            const areaEl = document.getElementById('schedule-test-area');
 
             if (todayRow) {
-                titleEl.innerText = todayRow[1]; 
-                const url = todayRow[2].trim();  
-                areaEl.innerHTML = `<a href="${url}" class="btn" target="_blank">Відкрити тест</a>`;
+                const testName = todayRow[1].trim();
+                const url = todayRow[2] ? todayRow[2].trim() : "";
+                
+                let html = `<p style="font-weight:600; color:#2c3e50; margin-bottom:10px;">${testName}</p>`;
+                if (url && url.startsWith('http')) {
+                    html += `<a href="${url}" class="btn" target="_blank">Відкрити тест</a>`;
+                }
+                areaEl.innerHTML = html;
             } else {
-                titleEl.innerText = "Тестів не знайдено";
-                areaEl.innerHTML = `<p class="error">На сьогодні графіком тестування не передбачено.</p>`;
+                areaEl.innerHTML = `<p class="no-data">На сьогодні планових тестувань за графіком немає.</p>`;
             }
         } catch (error) {
             console.error(error);
-            document.getElementById('test-name').innerText = "Помилка зв'язку з тестами";
+            document.getElementById('schedule-test-area').innerHTML = `<p class="error">Помилка зв'язку з графіком тестувань</p>`;
         }
     }
 
-    // ФУНКЦІЯ 2: ЗАВАНТАЖЕННЯ ДНІВ НАРОДЖЕННЯ
-    async function checkBirthdays() {
-        if (CSV_BDAYS_URL.startsWith('ПОСИЛАННЯ')) return; // Пропустити, якщо посилання не оновлено
+    // ФУНКЦІЯ 2: ДОДАТКОВІ ОГОЛОШЕННЯ (БЕЗ ПРИВ'ЯЗКИ ДО ДАТ)
+    async function loadCustomAnnouncements() {
+        if (CSV_ANNOUNCEMENTS_URL.startsWith('ПОСИЛАННЯ')) {
+            document.getElementById('custom-announcements-area').innerHTML = `<p class="no-data">Вставте посилання на 3-й аркуш у скрипт.</p>`;
+            return;
+        }
 
+        try {
+            const response = await fetch(CSV_ANNOUNCEMENTS_URL);
+            const data = await response.text();
+            const rows = data.split('\n').map(row => row.split(','));
+            const areaEl = document.getElementById('custom-announcements-area');
+            
+            let htmlContent = "";
+            let hasContent = false;
+
+            rows.forEach((row, index) => {
+                if (!row[0] || row[0].trim() === "") return;
+                
+                // Пропуск технічного заголовка таблиці, якщо він є
+                const firstCell = row[0].toLowerCase();
+                if (index === 0 && (firstCell.includes('текст') || firstCell.includes('оголошення'))) return;
+
+                hasContent = true;
+                const text = row[0].trim();
+                const url = row[1] ? row[1].trim() : "";
+
+                htmlContent += `<div class="announce-item">`;
+                htmlContent += `<p class="announce-text">${text}</p>`;
+                
+                // Ховаємо посилання в кнопку, якщо воно є
+                if (url && url.startsWith('http')) {
+                    htmlContent += `<a href="${url}" class="btn" target="_blank">Пройти тест</a>`;
+                }
+                htmlContent += `</div>`;
+            });
+
+            if (hasContent) {
+                areaEl.innerHTML = htmlContent;
+            } else {
+                areaEl.innerHTML = `<p class="no-data">Немає додаткових оголошень.</p>`;
+            }
+        } catch (error) {
+            console.error(error);
+            document.getElementById('custom-announcements-area').innerHTML = `<p class="error">Помилка завантаження додаткових оголошень</p>`;
+        }
+    }
+
+    // ФУНКЦІЯ 3: ДНІ НАРОДЖЕННЯ (ЗА ДАТАМИ)
+    async function checkBirthdays() {
+        if (CSV_BDAYS_URL.startsWith('ПОСИЛАННЯ')) return;
         try {
             const response = await fetch(CSV_BDAYS_URL);
             const data = await response.text();
-            
-            // Ділимо на рядки
             const rows = data.split('\n').map(row => row.split(','));
-
             let todaysCelebrants = [];
 
             rows.forEach(row => {
                 if (row.length >= 2) {
                     const name = row[0].trim();
                     const bdayField = row[1].trim();
-
-                    // Оскільки дата може бути "31.05" або "31.05.1990", беремо перші 5 символів (ДД.ММ)
                     const bdayShort = bdayField.substring(0, 5);
-
-                    if (bdayShort === todayStr && name !== "") {
-                        todaysCelebrants.push(name);
-                    }
+                    if (bdayShort === todayStr && name !== "") todaysCelebrants.push(name);
                 }
             });
 
-            // Якщо знайшли іменинників, показуємо картку привітання
             if (todaysCelebrants.length > 0) {
                 const bdayArea = document.getElementById('bday-area');
                 const bdayList = document.getElementById('bday-list');
-                
-                // Виводимо іменинників (кожного з нового рядка)
                 bdayList.innerHTML = todaysCelebrants.join('<br>');
-                
-                // Робимо блок видимим
                 bdayArea.style.display = 'block';
             }
-        } catch (error) {
-            console.error("Не вдалося завантажити дні народження:", error);
-        }
+        } catch (error) { console.error(error); }
     }
 
-    // Запускаємо обидві функції
-    loadTestData();
+    // Запускаємо все одночасно
+    loadScheduleTests();
+    loadCustomAnnouncements();
     checkBirthdays();
 </script>
 
